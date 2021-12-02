@@ -1,0 +1,77 @@
+on:
+  push:
+    branches:
+      - staging
+      - production
+
+name: Deploy to AWS ECS
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-20.04
+
+    steps:
+#    - name: Check build is successful in AWS CodeBuild
+#      run: |
+#        while true; do
+#          CURRENT_STATUS=$(curl --silent --url https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/status --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' | jq -r '.state');
+#          echo "Current commit status is: $CURRENT_STATUS"
+#          if [ "${CURRENT_STATUS^^}" = "PENDING" ]; then
+#            echo "Waiting 30 seconds..."
+#            sleep 30;
+#          elif [ "${CURRENT_STATUS^^}" != "SUCCESS" ]; then
+#            echo "Commit did not return success. Stopping Deployment";
+#            exit 1;
+#          else
+#            echo "Commit successful. Moving on!"
+#            break;
+#          fi;
+#        done
+
+
+    - name: Configure AWS credentials
+      id: aws-config
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Set output
+      id: vars
+      run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
+
+    - name: Run build on AWS CodeBuild
+      uses: aws-actions/aws-codebuild-run-build@v1
+      with:
+        project-name: veezor-wordpress-${{ steps.vars.outputs.short_ref }}-image-build
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ env.GITHUB_REF_SLUG }}
+
+    - name: Inject slug and short variables
+      uses: rlespinasse/github-slug-action@v3.x
+
+    - name: Render web AWS ECS Task Definition
+      id: task-def-web
+      uses: fagiani/amazon-ecs-render-task-definition@master
+      with:
+        task-definition: .aws/ecs/task-definition-${{ env.GITHUB_REF_SLUG }}-web.json
+        family-name: ${{ env.GITHUB_REPOSITORY_SLUG }}-${{ env.GITHUB_REF_SLUG }}-web
+        container-name: ${{ env.GITHUB_REPOSITORY_SLUG }}-${{ env.GITHUB_REF_SLUG }}
+        image: ${{ steps.aws-config.outputs.aws-account-id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.GITHUB_REPOSITORY_SLUG }}-${{ env.GITHUB_REF_SLUG }}:${{ env.GITHUB_SHA_SHORT }}
+        aws-sm-name: ${{ env.GITHUB_REF_SLUG }}/${{ env.GITHUB_REPOSITORY_SLUG }}
+        aws-account-id: ${{ steps.aws-config.outputs.aws-account-id }}
+        aws-sm-arns: true
+        use-secrets: true
+
+    - name: Deploy web process to AWS ECS
+      if: ${{ steps.task-def-web.conclusion == 'success' }}
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def-web.outputs.task-definition }}
+        service: ${{ env.GITHUB_REPOSITORY_NAME_PART_SLUG }}-${{ env.GITHUB_REF_SLUG }}-web
+        cluster: ${{ env.GITHUB_REPOSITORY_NAME_PART_SLUG }}-${{ env.GITHUB_REF_SLUG }}
+        wait-for-service-stability: false
