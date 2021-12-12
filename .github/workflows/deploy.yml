@@ -44,7 +44,7 @@ jobs:
     - name: Run build on AWS CodeBuild
       uses: aws-actions/aws-codebuild-run-build@v1
       with:
-        project-name: veezor-static-site-${{ steps.vars.outputs.short_ref }}-image-build
+        project-name: veezor-veezor_demo-${{ steps.vars.outputs.short_ref }}-image-build
 
     - name: Checkout
       uses: actions/checkout@v2
