@@ -1,0 +1,7 @@
+[project]
+id = "com.veezor.static-site"
+name = "static-site"
+version = "1.0"
+
+[build]
+builder = "heroku/buildpacks:20"
