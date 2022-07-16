@@ -1,1 +1,1 @@
-web: bundle exec jekyll serve --port 3000
+web: bundle exec jekyll serve --port 3000 --trace --incremental --watch --drafts
