@@ -1,0 +1,13 @@
+[project]
+id = "com.veezor.static-site"
+name = "Static Site"
+version = "1.0"
+
+[build]
+builder = "heroku/buildpacks:18"
+
+[[build.buildpacks]]
+uri = "heroku/ruby"
+
+[[build.buildpacks]]
+uri = "heroku/procfile@1.0.2"
