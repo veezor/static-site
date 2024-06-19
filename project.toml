@@ -4,4 +4,8 @@ name = "static-site"
 version = "1.0"
 
 [build]
-builder = "heroku/buildpacks:20"
+builder = "heroku/builder:24"
+
+[[targets]]
+arch = "arm64"
+os = "linux"
