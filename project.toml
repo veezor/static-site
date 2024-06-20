@@ -1,10 +1,11 @@
-[project]
-id = "com.veezor.static-site"
-name = "static-site"
-version = "1.0"
+[_]
+schema-version = "0.2"
 
-[build]
-builder = "heroku/builder:24"
+[io.buildpacks]
+builder = "heroku/builder:22"
+
+[[io.buildpacks.group]]
+id = "heroku/ruby"
 
 [[targets]]
 arch = "arm64"
